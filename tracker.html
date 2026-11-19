@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Traceur GPS Web - PHONE-01</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+  <h3>Traceur Web — PHONE-01</h3>
+  <button id="btnStart">Démarrer le suivi GPS</button>
+  <pre id="log">En attente...</pre>
+
+  <script>
+    const DEVICE_ID = "PHONE-01";
+    const TOPIC = `flotte/positions/${DEVICE_ID}`;
+    const BROKER_WSS = "wss://broker.emqx.io:8084/mqtt";
+
+    const logEl = document.getElementById("log");
+    const log = (msg) => { logEl.textContent = msg + "\n" + logEl.textContent; };
+
+    let client = null;
+    let watchId = null;
+
+    document.getElementById("btnStart").addEventListener("click", () => {
+      if (!("geolocation" in navigator)) {
+        log("Géolocalisation non supportée par ce navigateur.");
+        return;
+      }
+
+      client = mqtt.connect(BROKER_WSS, {
+        clientId: "web-tracker-" + Math.random().toString(16).slice(2, 10)
+      });
+
+      client.on("connect", () => {
+        log("Connecté au broker MQTT (WSS). Activation du GPS...");
+
+        watchId = navigator.geolocation.watchPosition(
+          (pos) => {
+            const payload = {
+              device_id: DEVICE_ID,
+              lat: Number(pos.coords.latitude.toFixed(6)),
+              lng: Number(pos.coords.longitude.toFixed(6)),
+              speed_kmh: pos.coords.speed != null ? Number((pos.coords.speed * 3.6).toFixed(1)) : 0.0,
+              battery_pct: 100
+            };
+
+            client.publish(TOPIC, JSON.stringify(payload));
+            log("Envoyé : " + JSON.stringify(payload));
+          },
+          (err) => {
+            log("Erreur GPS (" + err.code + ") : " + err.message);
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 1000,
+            timeout: 10000
+          }
+        );
+      });
+
+      client.on("error", (err) => log("Erreur MQTT : " + err.message));
+    });
+  </script>
+</body>
+</html>
