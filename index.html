@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Suivi en temps réel - Téléphone</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    #hud {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.94);
+      padding: 12px 14px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      font-size: 13px;
+      line-height: 1.5;
+      min-width: 220px;
+    }
+    .status-ok { color: #15803d; font-weight: bold; }
+    .status-wait { color: #b45309; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div><strong>Statut :</strong> <span id="status" class="status-wait">Connexion...</span></div>
+    <div><strong>Appareil :</strong> <span id="device">-</span></div>
+    <div><strong>Vitesse :</strong> <span id="speed">-</span></div>
+    <div><strong>Batterie :</strong> <span id="battery">-</span></div>
+    <div><strong>Mise à jour :</strong> <span id="updated">-</span></div>
+  </div>
+
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script>
+    // 1. Initialisation de la carte (centrée par défaut sur Antananarivo)
+    const map = L.map("map").setView([-18.8792, 47.5079], 14);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    // Stockage par appareil : marqueur et tracé du trajet
+    const devices = {};
+
+    // 2. Connexion au broker MQTT via WebSockets (WSS)
+    const brokerUrl = "wss://broker.emqx.io:8084/mqtt";
+    const topic = "flotte/positions/+"; // ex: flotte/positions/PHONE-01
+
+    const statusEl = document.getElementById("status");
+    const deviceEl = document.getElementById("device");
+    const speedEl = document.getElementById("speed");
+    const batteryEl = document.getElementById("battery");
+    const updatedEl = document.getElementById("updated");
+
+    const client = mqtt.connect(brokerUrl, {
+      clientId: "web-tracker-" + Math.random().toString(16).substr(2, 8),
+      clean: true
+    });
+
+    client.on("connect", () => {
+      statusEl.textContent = "Connecté";
+      statusEl.className = "status-ok";
+      client.subscribe(topic);
+    });
+
+    client.on("reconnect", () => {
+      statusEl.textContent = "Reconnexion...";
+      statusEl.className = "status-wait";
+    });
+
+    client.on("message", (receivedTopic, message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        const id = data.device_id || receivedTopic.split("/").pop() || "PHONE-01";
+        const lat = Number(data.lat);
+        const lng = Number(data.lng);
+
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+
+        const latLng = [lat, lng];
+
+        if (!devices[id]) {
+          const marker = L.marker(latLng).addTo(map).bindPopup(`<strong>${id}</strong>`);
+          const polyline = L.polyline([latLng], { weight: 4 }).addTo(map);
+          devices[id] = { marker, polyline };
+          map.setView(latLng, 15);
+        } else {
+          devices[id].marker.setLatLng(latLng);
+          devices[id].polyline.addLatLng(latLng);
+        }
+
+        const popupHtml = `
+          <strong>${id}</strong><br/>
+          Lat : ${lat.toFixed(6)}<br/>
+          Lng : ${lng.toFixed(6)}<br/>
+          Vitesse : ${data.speed_kmh ?? 0} km/h<br/>
+          Batterie : ${data.battery_pct ?? "?"}%
+        `;
+        devices[id].marker.setPopupContent(popupHtml);
+
+        deviceEl.textContent = id;
+        speedEl.textContent = data.speed_kmh != null ? `${Number(data.speed_kmh).toFixed(1)} km/h` : "-";
+        batteryEl.textContent = data.battery_pct != null ? `${data.battery_pct} %` : "-";
+        updatedEl.textContent = new Date().toLocaleTimeString();
+      } catch (err) {
+        console.error("Erreur JSON MQTT :", err);
+      }
+    });
+  </script>
+</body>
+</html>
