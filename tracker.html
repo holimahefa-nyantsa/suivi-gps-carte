@@ -5,51 +5,183 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Traceur GPS Web - PHONE-01</title>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+    h2 {
+      margin: 0 0 6px;
+      font-size: 1.25rem;
+    }
+    .subtitle {
+      margin: 0 0 18px;
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    button {
+      flex: 1;
+      padding: 12px;
+      border: 0;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    #btnStart {
+      background: #2563eb;
+      color: #ffffff;
+    }
+    #btnStop {
+      background: #dc2626;
+      color: #ffffff;
+    }
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .stats {
+      background: #0f172a;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 14px;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+    pre {
+      background: #0b1120;
+      color: #cbd5e1;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      max-height: 180px;
+      overflow-y: auto;
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
 </head>
 <body>
-  <h3>Traceur Web — PHONE-01</h3>
-  <button id="btnStart">Démarrer le suivi GPS</button>
-  <pre id="log">En attente...</pre>
+  <div class="card">
+    <h2>Traceur GPS — PHONE-01</h2>
+    <p class="subtitle">Envoi temps réel vers MQTT (`flotte/positions/PHONE-01`)</p>
+
+    <div class="actions">
+      <button id="btnStart">Démarrer</button>
+      <button id="btnStop" disabled>Arrêter</button>
+    </div>
+
+    <div class="stats">
+      <div><strong>État :</strong> <span id="status">Inactif</span></div>
+      <div><strong>Position :</strong> <span id="coords">-</span></div>
+      <div><strong>Précision :</strong> <span id="accuracy">-</span></div>
+      <div><strong>Vitesse :</strong> <span id="speed">-</span></div>
+    </div>
+
+    <pre id="log">Prêt à démarrer.</pre>
+  </div>
 
   <script>
     const DEVICE_ID = "PHONE-01";
     const TOPIC = `flotte/positions/${DEVICE_ID}`;
     const BROKER_WSS = "wss://broker.emqx.io:8084/mqtt";
 
+    const btnStart = document.getElementById("btnStart");
+    const btnStop = document.getElementById("btnStop");
+    const statusEl = document.getElementById("status");
+    const coordsEl = document.getElementById("coords");
+    const accuracyEl = document.getElementById("accuracy");
+    const speedEl = document.getElementById("speed");
     const logEl = document.getElementById("log");
-    const log = (msg) => { logEl.textContent = msg + "\n" + logEl.textContent; };
 
     let client = null;
     let watchId = null;
 
-    document.getElementById("btnStart").addEventListener("click", () => {
+    function addLog(message) {
+      const time = new Date().toLocaleTimeString();
+      logEl.textContent = `[${time}] ${message}\n` + logEl.textContent;
+    }
+
+    function stopTracking() {
+      if (watchId !== null && "geolocation" in navigator) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+      if (client) {
+        client.end(true);
+        client = null;
+      }
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+      statusEl.textContent = "Arrêté";
+      addLog("Suivi GPS et connexion MQTT arrêtés.");
+    }
+
+    btnStart.addEventListener("click", () => {
       if (!("geolocation" in navigator)) {
-        log("Géolocalisation non supportée par ce navigateur.");
+        addLog("Géolocalisation non supportée par ce navigateur.");
         return;
       }
+
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+      statusEl.textContent = "Connexion MQTT...";
 
       client = mqtt.connect(BROKER_WSS, {
         clientId: "web-tracker-" + Math.random().toString(16).slice(2, 10)
       });
 
       client.on("connect", () => {
-        log("Connecté au broker MQTT (WSS). Activation du GPS...");
+        statusEl.textContent = "Actif (GPS en cours)";
+        addLog("Connecté à broker.emqx.io (WSS).");
 
         watchId = navigator.geolocation.watchPosition(
           (pos) => {
+            const lat = Number(pos.coords.latitude.toFixed(6));
+            const lng = Number(pos.coords.longitude.toFixed(6));
+            const acc = Math.round(pos.coords.accuracy);
+            const speedKmh = pos.coords.speed != null
+              ? Number((pos.coords.speed * 3.6).toFixed(1))
+              : 0.0;
+
+            coordsEl.textContent = `${lat}, ${lng}`;
+            accuracyEl.textContent = `± ${acc} m`;
+            speedEl.textContent = `${speedKmh} km/h`;
+
             const payload = {
               device_id: DEVICE_ID,
-              lat: Number(pos.coords.latitude.toFixed(6)),
-              lng: Number(pos.coords.longitude.toFixed(6)),
-              speed_kmh: pos.coords.speed != null ? Number((pos.coords.speed * 3.6).toFixed(1)) : 0.0,
+              lat: lat,
+              lng: lng,
+              speed_kmh: speedKmh,
               battery_pct: 100
             };
 
-            client.publish(TOPIC, JSON.stringify(payload));
-            log("Envoyé : " + JSON.stringify(payload));
+            if (client && client.connected) {
+              client.publish(TOPIC, JSON.stringify(payload));
+              addLog(`Publié : ${JSON.stringify(payload)}`);
+            }
           },
           (err) => {
-            log("Erreur GPS (" + err.code + ") : " + err.message);
+            addLog(`Erreur GPS (${err.code}) : ${err.message}`);
           },
           {
             enableHighAccuracy: true,
@@ -59,8 +191,12 @@
         );
       });
 
-      client.on("error", (err) => log("Erreur MQTT : " + err.message));
+      client.on("error", (err) => {
+        addLog("Erreur MQTT : " + err.message);
+      });
     });
+
+    btnStop.addEventListener("click", stopTracking);
   </script>
 </body>
 </html>
