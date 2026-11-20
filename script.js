@@ -3,26 +3,34 @@ const map = L.map('map').setView(
   [-18.8792, 47.5079], 13
 );
 
-L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+// Carte classique détaillée
+const streetMap = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
   {
-    attribution: '&copy; OpenStreetMap'
+    attribution: 'Tiles &copy; Esri',
+    maxZoom: 19
   }
-).addTo(map);
+);
 
-// Variables GPS
-let marker = null;
-let circle = null;
-let route = null;
-let watchId = null;
+// Carte satellite
+const satelliteMap = L.tileLayer(
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  {
+    attribution: 'Tiles &copy; Esri',
+    maxZoom: 19
+  }
+);
 
-let lastPosition = null;
-let totalDistance = 0;
-let routePoints = [];
+// Choix de la carte
+streetMap.addTo(map);
 
-let follow = true;
+const baseMaps = {
+  "Carte détaillée": streetMap,
+  "Satellite": satelliteMap
+};
 
-const status = document.getElementById('status');
+L.control.layers(baseMaps).addTo(map);
+
 
 // Calcul de distance entre deux coordonnées
 function calculateDistance(a, b) {
