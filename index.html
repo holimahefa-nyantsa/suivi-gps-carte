@@ -3,47 +3,65 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GPS IoT Tracker</title>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <title>GPS IoT Tracker V2</title>
 
   <link rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-  <header>
-    <h2>GPS IoT Tracker</h2>
-    <span id="status">GPS déconnecté</span>
-  </header>
+<header>
+  <h2>GPS IoT Tracker</h2>
+  <p id="status">GPS déconnecté</p>
+</header>
 
-  <main>
-    <div class="info">
-      <div class="item">
-        <small>Latitude</small>
-        <strong id="lat">--</strong>
-      </div>
+<main>
 
-      <div class="item">
-        <small>Longitude</small>
-        <strong id="lon">--</strong>
-      </div>
+  <section class="dashboard">
 
-      <div class="item">
-        <small>Précision</small>
-        <strong id="accuracy">--</strong>
-      </div>
+    <div class="item">
+      <small>Latitude</small>
+      <strong id="lat">--</strong>
     </div>
 
-    <div id="map"></div>
+    <div class="item">
+      <small>Longitude</small>
+      <strong id="lon">--</strong>
+    </div>
 
-    <button id="start">Démarrer le GPS</button>
-    <button id="stop">Arrêter le GPS</button>
-  </main>
+    <div class="item">
+      <small>Précision GPS</small>
+      <strong id="accuracy">--</strong>
+    </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="script.js"></script>
+    <div class="item">
+      <small>Vitesse</small>
+      <strong id="speed">-- km/h</strong>
+    </div>
+
+    <div class="item">
+      <small>Distance parcourue</small>
+      <strong id="distance">0 m</strong>
+    </div>
+
+  </section>
+
+  <div id="map"></div>
+
+  <button id="start">Démarrer le GPS</button>
+  <button id="stop">Arrêter le GPS</button>
+  <button id="center">Recentrer ma position</button>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="script.js"></script>
 
 </body>
 </html>
