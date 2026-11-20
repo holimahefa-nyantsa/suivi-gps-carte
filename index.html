@@ -1,0 +1,49 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPS IoT Tracker</title>
+
+  <link rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h2>GPS IoT Tracker</h2>
+    <span id="status">GPS déconnecté</span>
+  </header>
+
+  <main>
+    <div class="info">
+      <div class="item">
+        <small>Latitude</small>
+        <strong id="lat">--</strong>
+      </div>
+
+      <div class="item">
+        <small>Longitude</small>
+        <strong id="lon">--</strong>
+      </div>
+
+      <div class="item">
+        <small>Précision</small>
+        <strong id="accuracy">--</strong>
+      </div>
+    </div>
+
+    <div id="map"></div>
+
+    <button id="start">Démarrer le GPS</button>
+    <button id="stop">Arrêter le GPS</button>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+
+</body>
+</html>
