@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GPS Phone Test</title>
+</head>
+<body>
+  <h2>GPS du téléphone</h2>
+
+  <button onclick="startGPS()">Démarrer le GPS</button>
+
+  <p id="status">En attente...</p>
+  <p id="latitude">Latitude : --</p>
+  <p id="longitude">Longitude : --</p>
+  <p id="accuracy">Précision : --</p>
+
+  <script>
+    function startGPS() {
+      if (!navigator.geolocation) {
+        document.getElementById("status").textContent =
+          "GPS non disponible";
+        return;
+      }
+
+      document.getElementById("status").textContent =
+        "Recherche de la position...";
+
+      navigator.geolocation.watchPosition(
+        position => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          const accuracy = position.coords.accuracy;
+
+          document.getElementById("status").textContent =
+            "Position reçue !";
+
+          document.getElementById("latitude").textContent =
+            "Latitude : " + lat;
+
+          document.getElementById("longitude").textContent =
+            "Longitude : " + lon;
+
+          document.getElementById("accuracy").textContent =
+            "Précision : " + accuracy + " mètres";
+        },
+        error => {
+          document.getElementById("status").textContent =
+            "Erreur GPS : " + error.message;
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 15000
+        }
+      );
+    }
+  </script>
+</body>
+</html>
